@@ -1,20 +1,14 @@
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException
 from fastapi.responses import FileResponse
 from processor.service import process_logs
-import uuid
-import os
-import json
+import uuid, os, json
+from config import RESULT_DIR
 
 app = FastAPI()
-
-
-
-# Store file logic
 results = {}
-RESULT_DIR = "results"
+
 os.makedirs(RESULT_DIR,exist_ok=True)
 
-# File processing and get result
 def run_processing(job_id, lines):
     from config import BATCH_SIZE, NUM_WORKER
     result = process_logs(lines, BATCH_SIZE, NUM_WORKER)
@@ -27,8 +21,6 @@ def run_processing(job_id, lines):
         "WARNING": len(result["WARNING"]),
         "ERROR": len(result["ERROR"])
     }
-
-# Process log route
 @app.post("/process-log")
 async def process_log(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
     lines = [line.decode("utf-8") for line in file.file]
@@ -42,14 +34,12 @@ async def process_log(file: UploadFile = File(...), background_tasks: Background
         "download_url": f"/download/{job_id}"
     }
 
-# Get status route
 @app.get("/status/{job_id}")
 def get_status(job_id: str):
     if job_id in results:
         return results[job_id]
     return {"status": "processing"}
 
-# Download processesed file
 @app.get("/download/{job_id}")
 def download_file(job_id: str):
     file_path = f"{RESULT_DIR}/{job_id}.json"
